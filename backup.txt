@@ -1,0 +1,60 @@
+import json
+from elasticsearch import Elasticsearch, RequestsHttpConnection
+import logging
+ 
+logger =  logging.Logger("test")
+import warnings
+warnings.filterwarnings("ignore")
+
+#constants / read from events
+auth = ('elastic', 'itFUWOYAXf1x1a3AdR8macZh')
+daysToKeep = 7
+host = "https://02c5bc696f5844f681cf5bfca6c5e9a6.us-east-1.aws.found.io:9243/"
+reposName = 'found-snapshots'
+
+createReposBody = {
+    "type" : "s3",
+    "settings" : {
+      "bucket" : "2c873ed81d5e479fbc1a715e75361039",
+      "client" : "elastic-internal-02c5bc",
+      "base_path" : "snapshots/02c5bc696f5844f681cf5bfca6c5e9a6",
+      "server_side_encryption" : "true",
+      "compress" : "true",
+      "aws_account" : "operations-25-us-east-1"
+    }
+}
+
+
+createSnapShotBody = {
+        "indices": "apm-7.6.2-onboarding-2020.04.23",
+        "ignore_unavailable": True,
+        "include_global_state": False,
+        "metadata": {
+            "taken_by": "mohasin.c",
+            "taken_because": "backup for this date"
+        }
+    }
+
+def efk_handler(event, context):
+
+    es = Elasticsearch(host, http_auth=auth, use_ssl=True, verify_certs=False)
+    logger.info(es.info())
+
+    indices = es.cat.indices(format="json")
+
+    y = es.snapshot.create_repository(reposName,createReposBody)
+
+    x = es.snapshot.get_repository(reposName)
+
+    z = es.snapshot.create(reposName,'backup1',createSnapShotBody)
+
+    a = es.snapshot.delete(reposName,'backup1')
+
+    for index in indices :
+
+        if (index['index']=="kibana_sample_data_logs"):
+
+            es.indices.delete(index['index'])
+    print(es.cat.indices(format="json"))
+
+efk_handler(None,None)
